@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import apiClient from '@/lib/api'
-import { Box, Typography, TextField, Button, Grid, Card, CardContent, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, Accordion, AccordionSummary, AccordionDetails } from '@mui/material'
+import { Box, Typography, TextField, Button, Grid, Card, CardContent, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, Accordion, AccordionSummary, AccordionDetails, Collapse, IconButton } from '@mui/material'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { useAdminAuth } from '@/hooks/useAdminAuth'
 
@@ -32,6 +32,8 @@ export default function AdminDashboard() {
   // State for collapsible sections - track expanded state by tournament ID
   const [expandedPlayers, setExpandedPlayers] = useState<Set<number>>(new Set())
   const [expandedMatches, setExpandedMatches] = useState<Set<number>>(new Set())
+  // State for expanded match sections within categories (tournamentId-categoryName-status)
+  const [expandedMatchSections, setExpandedMatchSections] = useState<Set<string>>(new Set())
   const [showCreateTournament, setShowCreateTournament] = useState(false)
   const [showCreatePlayer, setShowCreatePlayer] = useState(false)
   const [showAllPlayers, setShowAllPlayers] = useState(false)
@@ -238,6 +240,32 @@ export default function AdminDashboard() {
     })
   }
 
+  function toggleMatchSectionExpansion(tournamentId: number, categoryName: string, status: 'inProgress' | 'completed') {
+    const key = `${tournamentId}-${categoryName}-${status}`
+    setExpandedMatchSections(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(key)) {
+        newSet.delete(key)
+      } else {
+        newSet.add(key)
+      }
+      return newSet
+    })
+  }
+
+  // Helper function to determine if a section should be expanded by default
+  function shouldExpandSection(categoryName: string, status: 'inProgress' | 'completed', hasMatches: boolean) {
+    // Never expand completed sections by default
+    if (status === 'completed') return false
+    
+    // Never expand if no matches
+    if (!hasMatches) return false
+    
+    // Only expand knockout rounds with pending matches
+    const knockoutRounds = ['Final', 'Third Place Playoff', 'Semifinals', 'Quarterfinals', 'Round of 16']
+    return knockoutRounds.includes(categoryName)
+  }
+
   async function deleteTournament(tournamentId: number, tournamentName: string) {
     if (!confirm(`Are you sure you want to delete "${tournamentName}"? This will permanently delete the tournament and all its matches.`)) {
       return
@@ -274,6 +302,70 @@ export default function AdminDashboard() {
     if (!t) return String(pid)
     const p = (t.players || []).find((x: any) => x.id === pid)
     return p ? p.name : String(pid)
+  }
+
+  // Helper function to categorize matches for improved UX
+  function categorizeMatches(matches: any[], tournamentType: string) {
+    if (!matches || matches.length === 0) return {}
+
+    const categories: Record<string, { inProgress: any[], completed: any[] }> = {}
+
+    matches.forEach(match => {
+      const isCompleted = match.status === 'completed'
+      const statusKey = isCompleted ? 'completed' : 'inProgress'
+      
+      let categoryKey: string
+      
+      if (tournamentType === 'group_and_knockout') {
+        // For group matches, use the group letter
+        if (match.stage === 'group' || match.round === 'group') {
+          categoryKey = `Group ${match.group_letter || 'Unknown'}`
+        } else {
+          // For knockout rounds, use the round name
+          const roundNames: Record<string, string> = {
+            'round-of-16': 'Round of 16',
+            'quarter': 'Quarterfinals',
+            'semi': 'Semifinals',
+            'final': 'Final',
+            'third-place': 'Third Place Playoff'
+          }
+          categoryKey = roundNames[match.round] || match.round
+        }
+      } else {
+        // Round robin - just categorize by status
+        categoryKey = 'Round Robin'
+      }
+
+      if (!categories[categoryKey]) {
+        categories[categoryKey] = { inProgress: [], completed: [] }
+      }
+      
+      categories[categoryKey][statusKey].push(match)
+    })
+
+    // Sort matches within each category by ID for consistency
+    Object.values(categories).forEach(category => {
+      category.inProgress.sort((a, b) => a.id - b.id)
+      category.completed.sort((a, b) => a.id - b.id)
+    })
+
+    return categories
+  }
+
+  // Helper function to get display order for match categories
+  function getCategoryDisplayOrder(tournamentType: string) {
+    if (tournamentType === 'group_and_knockout') {
+      return [
+        'Final',
+        'Third Place Playoff', 
+        'Semifinals',
+        'Quarterfinals',
+        'Round of 16',
+        // Groups will be added dynamically and sorted alphabetically
+      ]
+    } else {
+      return ['Round Robin']
+    }
   }
 
   async function showStandings(tid: number) {
@@ -686,49 +778,303 @@ export default function AdminDashboard() {
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Typography variant="subtitle2" className="section-subtitle">
                       Matches ({t.matches?.length || 0})
+                      {(() => {
+                        const inProgressCount = t.matches?.filter((m: any) => m.status !== 'completed').length || 0
+
+                        return (
+                          <Typography component="span" sx={{ 
+                            color: inProgressCount > 0 ? '#ff9800' : '#4caf50', 
+                            fontSize: '0.8rem', 
+                            ml: 1,
+                            fontWeight: 500
+                          }}>
+                            {inProgressCount > 0 ? `${inProgressCount} pending` : 'All completed'}
+                          </Typography>
+                        )
+                      })()}
                     </Typography>
                   </AccordionSummary>
                   <AccordionDetails>
-                    <Box className="matches-list">
-                      {t.matches?.sort((a: any, b: any) => {
-                        // Define round order: final first, then third-place, semi, quarter, then group
-                        const roundOrder = {
-                          final: 0,
-                          'third-place': 1,
-                          semi: 2,
-                          quarter: 3,
-                          'round-of-16': 4,
-                          group: 5
+                    {(() => {
+                      const categorizedMatches = categorizeMatches(t.matches || [], t.type)
+                      const categoryOrder = getCategoryDisplayOrder(t.type)
+                      
+                      // Get all category keys and sort them
+                      const allCategories = Object.keys(categorizedMatches)
+                      const orderedCategories: string[] = []
+                      
+                      // First add known categories in priority order
+                      categoryOrder.forEach(category => {
+                        if (allCategories.includes(category)) {
+                          orderedCategories.push(category)
                         }
-                        const aOrder = roundOrder[a.round as keyof typeof roundOrder] ?? 6
-                        const bOrder = roundOrder[b.round as keyof typeof roundOrder] ?? 6
-                        if (aOrder !== bOrder) return aOrder - bOrder
-                        // If same round, sort by id
-                        return a.id - b.id
-                      }).map((m: any) => (
-                        <Box key={m.id} className="match-item">
-                          <span className="match-details">
-                            <span className="match-round">{m.round}</span> -
-                            <span className="match-players"> {getPlayerName(t, m.player1_id)} vs {getPlayerName(t, m.player2_id)}</span> -
-                            <span className="match-score">{m.score1 ?? '-'}:{m.score2 ?? '-'}</span>
-                          </span>
-                          <Button
-                            size="small"
-                            onClick={() => { setSelectedTournament(t.id); setScore(m.id); }}
-                            disabled={submitScoreLoading}
-                            className="match-action-button"
-                            variant="outlined"
-                          >
-                            {submitScoreLoading ? <CircularProgress size={12} /> : 'Set Score'}
-                          </Button>
+                      })
+                      
+                      // Then add group categories alphabetically
+                      const groupCategories = allCategories
+                        .filter(cat => cat.startsWith('Group') && !orderedCategories.includes(cat))
+                        .sort()
+                      
+                      orderedCategories.push(...groupCategories)
+                      
+                      // Add any remaining categories
+                      allCategories.forEach(cat => {
+                        if (!orderedCategories.includes(cat)) {
+                          orderedCategories.push(cat)
+                        }
+                      })
+
+                      if (orderedCategories.length === 0) {
+                        return (
+                          <Typography variant="body2" sx={{ color: '#b0bec5', fontStyle: 'italic' }}>
+                            No matches generated yet
+                          </Typography>
+                        )
+                      }
+
+                      return (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          {orderedCategories.map(categoryName => {
+                            const category = categorizedMatches[categoryName]
+                            const inProgressCount = category.inProgress.length
+                            const completedCount = category.completed.length
+                            const totalCount = inProgressCount + completedCount
+                            
+                            if (totalCount === 0) return null
+
+                            return (
+                              <Box key={categoryName} sx={{ 
+                                border: '1px solid rgba(255, 255, 255, 0.1)', 
+                                borderRadius: 1, 
+                                p: 1,
+                                backgroundColor: 'rgba(255, 255, 255, 0.02)'
+                              }}>
+                                <Typography variant="h6" sx={{ 
+                                  color: '#00e5ff', 
+                                  mb: 1, 
+                                  fontSize: '1rem',
+                                  fontWeight: 600,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between'
+                                }}>
+                                  <span>{categoryName}</span>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    {inProgressCount > 0 && (
+                                      <Typography component="span" sx={{ 
+                                        color: '#ff9800', 
+                                        fontSize: '0.75rem', 
+                                        backgroundColor: 'rgba(255, 152, 0, 0.2)',
+                                        px: 1,
+                                        py: 0.25,
+                                        borderRadius: 1,
+                                        fontWeight: 600
+                                      }}>
+                                        {inProgressCount} pending
+                                      </Typography>
+                                    )}
+                                    <Typography component="span" sx={{ 
+                                      color: '#b0bec5', 
+                                      fontSize: '0.75rem', 
+                                      fontWeight: 400
+                                    }}>
+                                      {totalCount} total
+                                    </Typography>
+                                  </Box>
+                                </Typography>
+
+                                {/* In Progress Section */}
+                                {inProgressCount > 0 && (
+                                  <Box sx={{ mb: inProgressCount > 0 && completedCount > 0 ? 2 : 0 }}>
+                                    <Box sx={{ 
+                                      display: 'flex', 
+                                      alignItems: 'center', 
+                                      justifyContent: 'space-between',
+                                      cursor: 'pointer',
+                                      p: 0.5,
+                                      borderRadius: 1,
+                                      border: '1px solid rgba(255, 152, 0, 0.2)',
+                                      backgroundColor: 'rgba(255, 152, 0, 0.03)',
+                                      '&:hover': { 
+                                        backgroundColor: 'rgba(255, 152, 0, 0.08)',
+                                        borderColor: 'rgba(255, 152, 0, 0.4)'
+                                      }
+                                    }}
+                                    onClick={() => toggleMatchSectionExpansion(t.id, categoryName, 'inProgress')}
+                                    >
+                                      <Typography variant="subtitle2" sx={{ 
+                                        color: '#ff9800', 
+                                        fontSize: '0.9rem',
+                                        fontWeight: 600,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 0.5
+                                      }}>
+                                        🔄 In Progress
+                                        <Typography component="span" sx={{ 
+                                          backgroundColor: 'rgba(255, 152, 0, 0.2)',
+                                          color: '#ff9800',
+                                          px: 0.75,
+                                          py: 0.25,
+                                          borderRadius: 0.5,
+                                          fontSize: '0.75rem',
+                                          fontWeight: 600
+                                        }}>
+                                          {inProgressCount}
+                                        </Typography>
+                                      </Typography>
+                                      <IconButton size="small" sx={{ color: '#ff9800' }}>
+                                        <ExpandMoreIcon sx={{
+                                          transform: (expandedMatchSections.has(`${t.id}-${categoryName}-inProgress`) || shouldExpandSection(categoryName, 'inProgress', inProgressCount > 0)) ? 'rotate(180deg)' : 'rotate(0deg)',
+                                          transition: 'transform 300ms',
+                                          fontSize: 20
+                                        }} />
+                                      </IconButton>
+                                    </Box>
+                                    <Collapse in={expandedMatchSections.has(`${t.id}-${categoryName}-inProgress`) || shouldExpandSection(categoryName, 'inProgress', inProgressCount > 0)} timeout="auto">
+                                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
+                                        {category.inProgress.map((m: any) => (
+                                          <Box key={m.id} sx={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            p: 1,
+                                            backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                                            borderRadius: 1,
+                                            border: '1px solid rgba(255, 152, 0, 0.3)',
+                                            '&:hover': {
+                                              backgroundColor: 'rgba(255, 152, 0, 0.15)',
+                                              transform: 'translateX(2px)',
+                                              transition: 'all 0.2s ease'
+                                            }
+                                          }}>
+                                            <Box sx={{ flex: 1 }}>
+                                              <Typography variant="body2" sx={{ color: '#ffffff', fontWeight: 500 }}>
+                                                {getPlayerName(t, m.player1_id)} vs {getPlayerName(t, m.player2_id)}
+                                              </Typography>
+                                              <Typography variant="caption" sx={{ color: '#b0bec5' }}>
+                                                Score: {m.score1 ?? '-'} : {m.score2 ?? '-'} • Click to update
+                                              </Typography>
+                                            </Box>
+                                            <Button
+                                              size="small"
+                                              onClick={() => { setSelectedTournament(t.id); setScore(m.id); }}
+                                              disabled={submitScoreLoading}
+                                              variant="contained"
+                                              sx={{ 
+                                                minWidth: 'auto',
+                                                backgroundColor: '#ff9800',
+                                                '&:hover': { backgroundColor: '#f57c00' },
+                                                fontWeight: 600
+                                              }}
+                                            >
+                                              Update
+                                            </Button>
+                                          </Box>
+                                        ))}
+                                      </Box>
+                                    </Collapse>
+                                  </Box>
+                                )}
+
+                                {/* Completed Section */}
+                                {completedCount > 0 && (
+                                  <Box>
+                                    <Box sx={{ 
+                                      display: 'flex', 
+                                      alignItems: 'center', 
+                                      justifyContent: 'space-between',
+                                      cursor: 'pointer',
+                                      p: 0.5,
+                                      borderRadius: 1,
+                                      border: '1px solid rgba(76, 175, 80, 0.2)',
+                                      backgroundColor: 'rgba(76, 175, 80, 0.03)',
+                                      '&:hover': { 
+                                        backgroundColor: 'rgba(76, 175, 80, 0.08)',
+                                        borderColor: 'rgba(76, 175, 80, 0.4)'
+                                      }
+                                    }}
+                                    onClick={() => toggleMatchSectionExpansion(t.id, categoryName, 'completed')}
+                                    >
+                                      <Typography variant="subtitle2" sx={{ 
+                                        color: '#4caf50', 
+                                        fontSize: '0.9rem',
+                                        fontWeight: 600,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 0.5
+                                      }}>
+                                        ✅ Completed
+                                        <Typography component="span" sx={{ 
+                                          backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                                          color: '#4caf50',
+                                          px: 0.75,
+                                          py: 0.25,
+                                          borderRadius: 0.5,
+                                          fontSize: '0.75rem',
+                                          fontWeight: 600
+                                        }}>
+                                          {completedCount}
+                                        </Typography>
+                                      </Typography>
+                                      <IconButton size="small" sx={{ color: '#4caf50' }}>
+                                        <ExpandMoreIcon sx={{
+                                          transform: expandedMatchSections.has(`${t.id}-${categoryName}-completed`) ? 'rotate(180deg)' : 'rotate(0deg)',
+                                          transition: 'transform 300ms',
+                                          fontSize: 20
+                                        }} />
+                                      </IconButton>
+                                    </Box>
+                                    <Collapse in={expandedMatchSections.has(`${t.id}-${categoryName}-completed`)} timeout="auto">
+                                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
+                                        {category.completed.map((m: any) => (
+                                          <Box key={m.id} sx={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            p: 1,
+                                            backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                                            borderRadius: 1,
+                                            border: '1px solid rgba(76, 175, 80, 0.3)',
+                                            '&:hover': {
+                                              backgroundColor: 'rgba(76, 175, 80, 0.15)',
+                                              transition: 'all 0.2s ease'
+                                            }
+                                          }}>
+                                            <Box sx={{ flex: 1 }}>
+                                              <Typography variant="body2" sx={{ color: '#ffffff', fontWeight: 500 }}>
+                                                {getPlayerName(t, m.player1_id)} vs {getPlayerName(t, m.player2_id)}
+                                              </Typography>
+                                              <Typography variant="caption" sx={{ color: '#81c784', fontWeight: 600 }}>
+                                                Final: {m.score1} : {m.score2}
+                                              </Typography>
+                                            </Box>
+                                            <Button
+                                              size="small"
+                                              onClick={() => { setSelectedTournament(t.id); setScore(m.id); }}
+                                              disabled={submitScoreLoading}
+                                              variant="outlined"
+                                              sx={{ 
+                                                minWidth: 'auto',
+                                                borderColor: '#4caf50',
+                                                color: '#4caf50',
+                                                '&:hover': { backgroundColor: 'rgba(76, 175, 80, 0.1)' }
+                                              }}
+                                            >
+                                              Edit
+                                            </Button>
+                                          </Box>
+                                        ))}
+                                      </Box>
+                                    </Collapse>
+                                  </Box>
+                                )}
+                              </Box>
+                            )
+                          })}
                         </Box>
-                      ))}
-                      {(!t.matches || t.matches.length === 0) && (
-                        <Typography variant="body2" sx={{ color: '#b0bec5', fontStyle: 'italic' }}>
-                          No matches generated yet
-                        </Typography>
-                      )}
-                    </Box>
+                      )
+                    })()}
                   </AccordionDetails>
                 </Accordion>
                 <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
