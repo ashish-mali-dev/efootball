@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { DatabaseService } from '@/lib/db'
+import { verifyAdminSession, createUnauthorizedResponse } from '@/lib/auth'
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; playerId: string }> }
 ) {
+  // 🛡️ SECURITY: Verify admin authentication
+  const authResult = await verifyAdminSession(request)
+  if (!authResult.authenticated) {
+    return createUnauthorizedResponse(`Admin access required: ${authResult.error}`)
+  }
+
   try {
     const { id, playerId } = await params
     const tournamentId = parseInt(id)

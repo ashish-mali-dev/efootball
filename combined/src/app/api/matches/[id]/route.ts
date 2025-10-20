@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { DatabaseService, Match, Player } from '@/lib/db'
+import { verifyAdminSession, createUnauthorizedResponse } from '@/lib/auth'
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // 🛡️ SECURITY: Verify admin authentication
+  const authResult = await verifyAdminSession(request)
+  if (!authResult.authenticated) {
+    return createUnauthorizedResponse(`Admin access required: ${authResult.error}`)
+  }
+
   try {
     const resolvedParams = await params
     const matchId = parseInt(resolvedParams.id)

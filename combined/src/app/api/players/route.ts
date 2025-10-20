@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { DatabaseService, Player } from '@/lib/db'
+import { verifyAdminSession, createUnauthorizedResponse } from '@/lib/auth'
 
 // Type definitions for request bodies
 interface CreatePlayerRequest {
@@ -20,6 +21,12 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  // 🛡️ SECURITY: Verify admin authentication
+  const authResult = await verifyAdminSession(request)
+  if (!authResult.authenticated) {
+    return createUnauthorizedResponse(`Admin access required: ${authResult.error}`)
+  }
+
   try {
     const body = await request.json() as CreatePlayerRequest
     const { name } = body
