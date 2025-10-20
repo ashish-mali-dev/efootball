@@ -1,26 +1,36 @@
 import React from 'react'
 import { Box, Typography, Button, Card, CardContent, Accordion, AccordionSummary, AccordionDetails, Collapse, IconButton } from '@mui/material'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import { useTournaments } from '../hooks/useTournaments'
 import { useMatches } from '../hooks/useMatches'
 import { useCollapsible } from '../hooks/useCollapsible'
 
 interface TournamentCardProps {
   tournament: any
+  selectedTournament: number | null
+  generateLoading: boolean
   onSetScore: (matchId: number) => void
   onGenerateMatches: (tournamentId: number) => void
   onDeleteTournament: (tournamentId: number, tournamentName: string) => void
   onRemovePlayer: (tournamentId: number, playerId: number, playerName: string) => void
+  onSelectTournament: (tournamentId: number) => void
+  onShowStandings: (tournamentId: number) => void
+  onShowGroupStandings: (tournamentId: number) => void
+  onShowKnockoutBracket: (tournamentId: number) => void
 }
 
 export function TournamentCard({ 
   tournament: t, 
+  selectedTournament,
+  generateLoading,
   onSetScore, 
   onGenerateMatches, 
   onDeleteTournament, 
-  onRemovePlayer 
+  onRemovePlayer,
+  onSelectTournament,
+  onShowStandings,
+  onShowGroupStandings,
+  onShowKnockoutBracket
 }: TournamentCardProps) {
-  const tournaments = useTournaments()
   const matches = useMatches()
   const collapsible = useCollapsible()
 
@@ -47,21 +57,21 @@ export function TournamentCard({
         <Box className="tournament-actions">
           <Button
             sx={{ mr: 1 }}
-            onClick={() => tournaments.setSelectedTournament(t.id)}
+            onClick={() => onSelectTournament(t.id)}
             className="action-button"
-            variant={tournaments.selectedTournament === t.id ? "contained" : "outlined"}
+            variant={selectedTournament === t.id ? "contained" : "outlined"}
           >
-            {tournaments.selectedTournament === t.id ? "Selected" : "Select"}
+            {selectedTournament === t.id ? "Selected" : "Select"}
           </Button>
           {t.status !== 'completed' && (
             <Button
               onClick={() => onGenerateMatches(t.id)}
-              disabled={tournaments.generateLoading}
+              disabled={generateLoading}
               className="action-button"
               variant="outlined"
               sx={{ mr: 1 }}
             >
-              {tournaments.generateLoading ? 'Generating...' : 'Generate Matches'}
+              {generateLoading ? 'Generating...' : 'Generate Matches'}
             </Button>
           )}
           <Button
@@ -432,7 +442,7 @@ export function TournamentCard({
         <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           <Button
             variant="outlined"
-            onClick={() => tournaments.showStandings(t.id)}
+            onClick={() => onShowStandings(t.id)}
             className="standings-button"
             size="small"
           >
@@ -442,7 +452,7 @@ export function TournamentCard({
             <>
               <Button
                 variant="outlined"
-                onClick={() => tournaments.showGroupStandings(t.id)}
+                onClick={() => onShowGroupStandings(t.id)}
                 className="standings-button"
                 size="small"
                 sx={{ color: '#81c784', borderColor: '#81c784' }}
@@ -451,7 +461,7 @@ export function TournamentCard({
               </Button>
               <Button
                 variant="outlined"
-                onClick={() => tournaments.showKnockoutBracket(t.id)}
+                onClick={() => onShowKnockoutBracket(t.id)}
                 className="standings-button"
                 size="small"
                 sx={{ color: '#ff9800', borderColor: '#ff9800' }}
