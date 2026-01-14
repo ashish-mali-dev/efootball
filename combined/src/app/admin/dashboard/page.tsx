@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Box, Typography, Button, Grid, CircularProgress } from '@mui/material'
 import { useAdminAuth } from '@/hooks/useAdminAuth'
 import { useTournaments } from './hooks/useTournaments'
@@ -19,6 +19,7 @@ export default function AdminDashboard() {
   const tournaments = useTournaments()
   const players = usePlayers()
   const matches = useMatches()
+  const [currentTournament, setCurrentTournament] = useState<any>(null)
 
   useEffect(() => {
     tournaments.loadTournaments()
@@ -42,6 +43,7 @@ export default function AdminDashboard() {
     const tournament = tournaments.tournaments.find(t => 
       t.matches?.some((m: any) => m.id === matchId)
     )
+    setCurrentTournament(tournament)
     matches.openScoreDialog(matchId, tournaments.tournaments, tournament?.id || tournaments.selectedTournament)
     tournaments.setSelectedTournament(tournament?.id || tournaments.selectedTournament)
   }
@@ -152,6 +154,11 @@ export default function AdminDashboard() {
               tournament={tournament}
               selectedTournament={tournaments.selectedTournament}
               generateLoading={tournaments.generateLoading}
+              submitScoreLoading={matches.submitScoreLoading}
+              categorizeMatches={matches.categorizeMatches}
+              getCategoryDisplayOrder={matches.getCategoryDisplayOrder}
+              shouldExpandSection={matches.shouldExpandSection}
+              getPlayerName={matches.getPlayerName}
               onSetScore={handleSetScore}
               onGenerateMatches={handleGenerateMatches}
               onDeleteTournament={handleDeleteTournament}
@@ -165,7 +172,19 @@ export default function AdminDashboard() {
         </Grid>
       </Grid>
       
-      <ScoreDialog onSubmitScore={handleSubmitScore} />
+      <ScoreDialog 
+        open={matches.scoreDialogOpen}
+        currentMatch={matches.currentMatch}
+        currentTournament={currentTournament}
+        dialogScore1={matches.dialogScore1}
+        dialogScore2={matches.dialogScore2}
+        submitScoreLoading={matches.submitScoreLoading}
+        onClose={matches.closeScoreDialog}
+        onSubmitScore={handleSubmitScore}
+        onScore1Change={matches.setDialogScore1}
+        onScore2Change={matches.setDialogScore2}
+        getPlayerName={matches.getPlayerName}
+      />
     </Box>
   )
 }

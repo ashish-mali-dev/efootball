@@ -1,13 +1,17 @@
 import React from 'react'
 import { Box, Typography, Button, Card, CardContent, Accordion, AccordionSummary, AccordionDetails, Collapse, IconButton } from '@mui/material'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import { useMatches } from '../hooks/useMatches'
 import { useCollapsible } from '../hooks/useCollapsible'
 
 interface TournamentCardProps {
   tournament: any
   selectedTournament: number | null
   generateLoading: boolean
+  submitScoreLoading: boolean
+  categorizeMatches: (matches: any[], tournamentType: string) => Record<string, any>
+  getCategoryDisplayOrder: (tournamentType: string) => string[]
+  shouldExpandSection: (categoryName: string, status: 'inProgress' | 'completed', hasMatches: boolean) => boolean
+  getPlayerName: (tournament: any, playerId: number) => string
   onSetScore: (matchId: number) => void
   onGenerateMatches: (tournamentId: number) => void
   onDeleteTournament: (tournamentId: number, tournamentName: string) => void
@@ -22,6 +26,11 @@ export function TournamentCard({
   tournament: t, 
   selectedTournament,
   generateLoading,
+  submitScoreLoading,
+  categorizeMatches,
+  getCategoryDisplayOrder,
+  shouldExpandSection,
+  getPlayerName,
   onSetScore, 
   onGenerateMatches, 
   onDeleteTournament, 
@@ -31,7 +40,6 @@ export function TournamentCard({
   onShowGroupStandings,
   onShowKnockoutBracket
 }: TournamentCardProps) {
-  const matches = useMatches()
   const collapsible = useCollapsible()
 
   return (
@@ -157,8 +165,8 @@ export function TournamentCard({
           </AccordionSummary>
           <AccordionDetails>
             {(() => {
-              const categorizedMatches = matches.categorizeMatches(t.matches || [], t.type)
-              const categoryOrder = matches.getCategoryDisplayOrder(t.type)
+              const categorizedMatches = categorizeMatches(t.matches || [], t.type)
+              const categoryOrder = getCategoryDisplayOrder(t.type)
               
               // Get all category keys and sort them
               const allCategories = Object.keys(categorizedMatches)
@@ -286,13 +294,13 @@ export function TournamentCard({
                               </Typography>
                               <IconButton size="small" sx={{ color: '#ff9800' }}>
                                 <ExpandMoreIcon sx={{
-                                  transform: (collapsible.expandedMatchSections.has(`${t.id}-${categoryName}-inProgress`) || matches.shouldExpandSection(categoryName, 'inProgress', inProgressCount > 0)) ? 'rotate(180deg)' : 'rotate(0deg)',
+                                  transform: (collapsible.expandedMatchSections.has(`${t.id}-${categoryName}-inProgress`) || shouldExpandSection(categoryName, 'inProgress', inProgressCount > 0)) ? 'rotate(180deg)' : 'rotate(0deg)',
                                   transition: 'transform 300ms',
                                   fontSize: 20
                                 }} />
                               </IconButton>
                             </Box>
-                            <Collapse in={collapsible.expandedMatchSections.has(`${t.id}-${categoryName}-inProgress`) || matches.shouldExpandSection(categoryName, 'inProgress', inProgressCount > 0)} timeout="auto">
+                            <Collapse in={collapsible.expandedMatchSections.has(`${t.id}-${categoryName}-inProgress`) || shouldExpandSection(categoryName, 'inProgress', inProgressCount > 0)} timeout="auto">
                               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
                                 {category.inProgress.map((m: any) => (
                                   <Box key={m.id} sx={{
@@ -311,7 +319,7 @@ export function TournamentCard({
                                   }}>
                                     <Box sx={{ flex: 1 }}>
                                       <Typography variant="body2" sx={{ color: '#ffffff', fontWeight: 500 }}>
-                                        {matches.getPlayerName(t, m.player1_id)} vs {matches.getPlayerName(t, m.player2_id)}
+                                        {getPlayerName(t, m.player1_id)} vs {getPlayerName(t, m.player2_id)}
                                       </Typography>
                                       <Typography variant="caption" sx={{ color: '#b0bec5' }}>
                                         Score: {m.score1 ?? '-'} : {m.score2 ?? '-'} • Click to update
@@ -320,7 +328,7 @@ export function TournamentCard({
                                     <Button
                                       size="small"
                                       onClick={() => onSetScore(m.id)}
-                                      disabled={matches.submitScoreLoading}
+                                      disabled={submitScoreLoading}
                                       variant="contained"
                                       sx={{ 
                                         minWidth: 'auto',
@@ -404,7 +412,7 @@ export function TournamentCard({
                                   }}>
                                     <Box sx={{ flex: 1 }}>
                                       <Typography variant="body2" sx={{ color: '#ffffff', fontWeight: 500 }}>
-                                        {matches.getPlayerName(t, m.player1_id)} vs {matches.getPlayerName(t, m.player2_id)}
+                                        {getPlayerName(t, m.player1_id)} vs {getPlayerName(t, m.player2_id)}
                                       </Typography>
                                       <Typography variant="caption" sx={{ color: '#81c784', fontWeight: 600 }}>
                                         Final: {m.score1} : {m.score2}
@@ -413,7 +421,7 @@ export function TournamentCard({
                                     <Button
                                       size="small"
                                       onClick={() => onSetScore(m.id)}
-                                      disabled={matches.submitScoreLoading}
+                                      disabled={submitScoreLoading}
                                       variant="outlined"
                                       sx={{ 
                                         minWidth: 'auto',
