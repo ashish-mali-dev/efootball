@@ -32,10 +32,10 @@ export default function RootLayout({
               <Box className={styles.navContainer}>
                 <Link href="/" className={styles.logoLink}>
                   <Box className={styles.logoContainer}>
-                    <Image 
-                      src="/logo.png" 
-                      alt="eFootball Tournament Manager" 
-                      width={40} 
+                    <Image
+                      src="/logo.png"
+                      alt="eFootball Tournament Manager"
+                      width={40}
                       height={40}
                       className={styles.logoImage}
                     />
@@ -43,6 +43,7 @@ export default function RootLayout({
                 </Link>
               </Box>
               <Button color="inherit" component={Link} href="/" className={styles.navButton}>Home</Button>
+              <Button color="inherit" component={Link} href="/details" className={styles.navButton}>Get Match Details</Button>
               <Button color="inherit" component={Link} href="/admin">Admin</Button>
             </Toolbar>
           </AppBar>
