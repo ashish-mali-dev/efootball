@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     if (!data) {
         await sendTelegramMessage(
             chatId,
-            "❌ Invalid format.\nPlease paste message containing:\nScore: X : Y\nMatch ID: 1234"
+            "❌ Please send data in proper format"
         )
         return NextResponse.json({ ok: true })
     }
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
             const errText = await apiRes.text()
             await sendTelegramMessage(
                 chatId,
-                `❌ Failed to update score.\nMatch ID: ${data.matchId}\nReason: ${errText}`
+                `❌ Failed to update score.`
             )
             return NextResponse.json({ ok: false })
         }
