@@ -35,13 +35,6 @@ export default function DetailsPage() {
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
           Loading...
         </Typography>
-
-        {/* ✅ Debug list */}
-        {tournaments.map((t: any) => (
-          <Typography key={t.id}>
-            {t.name} → <b>{String(t.status)}</b>
-          </Typography>
-        ))}
       </Box>
     )
   }

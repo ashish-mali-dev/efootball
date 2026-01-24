@@ -11,14 +11,13 @@ import {
     TextField,
     IconButton,
     Tooltip,
-    Button,
     Card,
     CardContent,
+    Button,
 } from "@mui/material"
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore"
 import ContentCopyIcon from "@mui/icons-material/ContentCopy"
 import SportsSoccerIcon from "@mui/icons-material/SportsSoccer"
-
 import { createPlayerLookup } from "@/app/utils/tournamentUtils"
 
 interface Match {
@@ -45,24 +44,22 @@ export function MatchesListEditable({ tournament, matches, players }: MatchesLis
     const playerLookup = createPlayerLookup(players)
 
     // ✅ Group Name comes from round
-    const getGroupName = (match: Match) => {
-        return String(match.round || "NO GROUP").toUpperCase()
-    }
+    const getGroupName = (match: Match) => String(match.round || "NO GROUP").toUpperCase()
 
-    // ✅ Get player names using lookup
-    const getPlayer1Name = (match: Match) => {
-        return playerLookup[match.player1_id] ?? match.player1_id
-    }
-
-    const getPlayer2Name = (match: Match) => {
-        return playerLookup[match.player2_id] ?? match.player2_id
-    }
+    // ✅ Player names using lookup
+    const getPlayer1Name = (match: Match) => playerLookup[match.player1_id] ?? match.player1_id
+    const getPlayer2Name = (match: Match) => playerLookup[match.player2_id] ?? match.player2_id
 
     // ✅ Local score map only for copy purpose
     const [scoreMap, setScoreMap] = useState<Record<number, { s1: string; s2: string }>>({})
 
+    // ✅ Copied message per match row
+    const [copiedMatchId, setCopiedMatchId] = useState<number | null>(null)
+
+    // ✅ Copied message for header button
+    const [copiedPlayersMsg, setCopiedPlayersMsg] = useState(false)
+
     const updateScore = (matchId: number, field: "s1" | "s2", value: string) => {
-        // allow only numbers
         if (value !== "" && !/^\d+$/.test(value)) return
 
         setScoreMap((prev) => ({
@@ -83,6 +80,21 @@ export function MatchesListEditable({ tournament, matches, players }: MatchesLis
             acc[groupKey].push(match)
             return acc
         }, {})
+    }, [matches])
+
+    // ✅ Group wise players (from matches)
+    const groupWisePlayers = useMemo(() => {
+        const groupMap: Record<string, Set<string>> = {}
+
+        matches.forEach((m) => {
+            const group = getGroupName(m)
+            if (!groupMap[group]) groupMap[group] = new Set()
+
+            groupMap[group].add(String(getPlayer1Name(m)))
+            groupMap[group].add(String(getPlayer2Name(m)))
+        })
+
+        return groupMap
     }, [matches])
 
     // ✅ Score Text logic
@@ -113,30 +125,37 @@ Status: ${String(tournament?.status).toUpperCase()}
 🆔 Match ID: ${match.id}`
 
         await navigator.clipboard.writeText(textToCopy)
+
+        setCopiedMatchId(match.id)
+
+        setTimeout(() => {
+            setCopiedMatchId(null)
+        }, 1500)
     }
 
-    // ✅ Copy full tournament
-    const copyFullTournament = async () => {
+    // ✅ Copy Group Wise Players
+    const copyGroupWisePlayers = async () => {
         const lines: string[] = []
 
         lines.push(`🏆 Tournament: ${tournament?.name}`)
         lines.push(`Status: ${String(tournament?.status).toUpperCase()}`)
-        lines.push(`Players: ${players.length}`)
+        lines.push(``)
+        lines.push(`👥 Group Wise Players`)
         lines.push(`-----------------------------`)
 
-        for (const [group, mList] of Object.entries(groupedMatches)) {
+        Object.entries(groupWisePlayers).forEach(([group, playersSet]) => {
             lines.push(`\n📌 ${group}`)
 
-            mList.forEach((m, index) => {
-                const p1 = getPlayer1Name(m)
-                const p2 = getPlayer2Name(m)
-                const scoreText = getScoreText(m)
-
-                lines.push(`${index + 1}) ${p1} vs ${p2}  =>  ${scoreText}  (MatchId: ${m.id})`)
+            const list = Array.from(playersSet)
+            list.forEach((p, index) => {
+                lines.push(`${index + 1}) ${p}`)
             })
-        }
+        })
 
         await navigator.clipboard.writeText(lines.join("\n"))
+
+        setCopiedPlayersMsg(true)
+        setTimeout(() => setCopiedPlayersMsg(false), 1500)
     }
 
     return (
@@ -147,6 +166,7 @@ Status: ${String(tournament?.status).toUpperCase()}
                     sx={{
                         display: "flex",
                         justifyContent: "space-between",
+                        alignItems: "center",
                         gap: 2,
                         flexWrap: "wrap",
                         mb: 2,
@@ -156,12 +176,34 @@ Status: ${String(tournament?.status).toUpperCase()}
                         Group Wise Matches
                     </Typography>
 
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        {copiedPlayersMsg && (
+                            <Typography sx={{ color: "#00e5ff", fontWeight: 700, fontSize: 13 }}>
+                                Copied ✅
+                            </Typography>
+                        )}
+
+                        <Button
+                            onClick={copyGroupWisePlayers}
+                            variant="outlined"
+                            size="small"
+                            sx={{
+                                color: "#00e5ff",
+                                borderColor: "#00e5ff",
+                                fontWeight: 800,
+                                "&:hover": {
+                                    borderColor: "#00e5ff",
+                                    backgroundColor: "rgba(0,229,255,0.08)",
+                                },
+                            }}
+                        >
+                            Copy Group Players
+                        </Button>
+                    </Box>
                 </Box>
 
                 {/* No matches */}
-                {Object.keys(groupedMatches).length === 0 && (
-                    <Typography>No matches available</Typography>
-                )}
+                {Object.keys(groupedMatches).length === 0 && <Typography>No matches available</Typography>}
 
                 {/* Groups */}
                 {Object.entries(groupedMatches).map(([group, mList]) => (
@@ -183,22 +225,24 @@ Status: ${String(tournament?.status).toUpperCase()}
                                             key={match.id}
                                             sx={{
                                                 display: "flex",
-                                                alignItems: "center",
                                                 justifyContent: "space-between",
                                                 gap: 2,
                                                 p: 1.2,
                                                 borderRadius: 2,
                                                 backgroundColor: "rgba(0,229,255,0.06)",
+                                                flexDirection: { xs: "column", sm: "row" },
+                                                alignItems: { xs: "stretch", sm: "center" },
                                             }}
                                         >
-                                            {/* ✅ Left match info (fixed width so alignment stays same) */}
-                                            <Box sx={{ width: 360 }}>
+                                            {/* Match info */}
+                                            <Box sx={{ width: { xs: "100%", sm: 360 } }}>
                                                 <Typography
                                                     sx={{
                                                         fontWeight: 700,
                                                         display: "flex",
                                                         alignItems: "center",
                                                         gap: 1,
+                                                        wordBreak: "break-word",
                                                     }}
                                                 >
                                                     <SportsSoccerIcon sx={{ fontSize: 16, color: "#00e5ff" }} />
@@ -210,12 +254,12 @@ Status: ${String(tournament?.status).toUpperCase()}
                                                 </Typography>
                                             </Box>
 
-                                            {/* ✅ Score inputs (fixed width + same line) */}
+                                            {/* Score inputs */}
                                             <Box
                                                 sx={{
-                                                    width: 320,
+                                                    width: { xs: "100%", sm: 320 },
                                                     display: "flex",
-                                                    justifyContent: "center",
+                                                    justifyContent: { xs: "flex-start", sm: "center" },
                                                     alignItems: "center",
                                                     gap: 1.2,
                                                 }}
@@ -225,7 +269,7 @@ Status: ${String(tournament?.status).toUpperCase()}
                                                     label={String(p1)}
                                                     value={scoreMap[match.id]?.s1 ?? ""}
                                                     onChange={(e) => updateScore(match.id, "s1", e.target.value)}
-                                                    sx={{ width: 130 }}   // ✅ increased width
+                                                    sx={{ width: { xs: "45%", sm: 130 } }}
                                                     inputProps={{ style: { textAlign: "center" } }}
                                                 />
 
@@ -236,25 +280,40 @@ Status: ${String(tournament?.status).toUpperCase()}
                                                     label={String(p2)}
                                                     value={scoreMap[match.id]?.s2 ?? ""}
                                                     onChange={(e) => updateScore(match.id, "s2", e.target.value)}
-                                                    sx={{ width: 130 }}   // ✅ increased width
+                                                    sx={{ width: { xs: "45%", sm: 130 } }}
                                                     inputProps={{ style: { textAlign: "center" } }}
                                                 />
                                             </Box>
 
-                                            {/* ✅ Copy Button (always at end aligned) */}
-                                            <Tooltip title="Copy match details">
-                                                <IconButton
-                                                    onClick={() => copyOneMatch(match)}
-                                                    sx={{
-                                                        color: "#00e5ff",
-                                                        "&:hover": { backgroundColor: "rgba(0,229,255,0.1)" },
-                                                    }}
-                                                >
-                                                    <ContentCopyIcon fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </Box>
+                                            {/* Copied text + Copy Button */}
+                                            <Box
+                                                sx={{
+                                                    width: { xs: "100%", sm: "auto" },
+                                                    display: "flex",
+                                                    justifyContent: { xs: "flex-end", sm: "flex-end" },
+                                                    alignItems: "center",
+                                                    gap: 1,
+                                                }}
+                                            >
+                                                {copiedMatchId === match.id && (
+                                                    <Typography sx={{ color: "#00e5ff", fontWeight: 700, fontSize: 13 }}>
+                                                        Copied ✅
+                                                    </Typography>
+                                                )}
 
+                                                <Tooltip title="Copy match details">
+                                                    <IconButton
+                                                        onClick={() => copyOneMatch(match)}
+                                                        sx={{
+                                                            color: "#00e5ff",
+                                                            "&:hover": { backgroundColor: "rgba(0,229,255,0.1)" },
+                                                        }}
+                                                    >
+                                                        <ContentCopyIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </Box>
+                                        </Box>
                                     )
                                 })}
                             </Stack>
