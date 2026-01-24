@@ -13,11 +13,11 @@ import {
     Tooltip,
     Card,
     CardContent,
+    Button,
 } from "@mui/material"
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore"
 import ContentCopyIcon from "@mui/icons-material/ContentCopy"
 import SportsSoccerIcon from "@mui/icons-material/SportsSoccer"
-
 import { createPlayerLookup } from "@/app/utils/tournamentUtils"
 
 interface Match {
@@ -56,8 +56,10 @@ export function MatchesListEditable({ tournament, matches, players }: MatchesLis
     // ✅ Copied message per match row
     const [copiedMatchId, setCopiedMatchId] = useState<number | null>(null)
 
+    // ✅ Copied message for header button
+    const [copiedPlayersMsg, setCopiedPlayersMsg] = useState(false)
+
     const updateScore = (matchId: number, field: "s1" | "s2", value: string) => {
-        // allow only numbers
         if (value !== "" && !/^\d+$/.test(value)) return
 
         setScoreMap((prev) => ({
@@ -78,6 +80,21 @@ export function MatchesListEditable({ tournament, matches, players }: MatchesLis
             acc[groupKey].push(match)
             return acc
         }, {})
+    }, [matches])
+
+    // ✅ Group wise players (from matches)
+    const groupWisePlayers = useMemo(() => {
+        const groupMap: Record<string, Set<string>> = {}
+
+        matches.forEach((m) => {
+            const group = getGroupName(m)
+            if (!groupMap[group]) groupMap[group] = new Set()
+
+            groupMap[group].add(String(getPlayer1Name(m)))
+            groupMap[group].add(String(getPlayer2Name(m)))
+        })
+
+        return groupMap
     }, [matches])
 
     // ✅ Score Text logic
@@ -109,12 +126,36 @@ Status: ${String(tournament?.status).toUpperCase()}
 
         await navigator.clipboard.writeText(textToCopy)
 
-        // ✅ Show "Copied ✅" near the same clicked row
         setCopiedMatchId(match.id)
 
         setTimeout(() => {
             setCopiedMatchId(null)
         }, 1500)
+    }
+
+    // ✅ Copy Group Wise Players
+    const copyGroupWisePlayers = async () => {
+        const lines: string[] = []
+
+        lines.push(`🏆 Tournament: ${tournament?.name}`)
+        lines.push(`Status: ${String(tournament?.status).toUpperCase()}`)
+        lines.push(``)
+        lines.push(`👥 Group Wise Players`)
+        lines.push(`-----------------------------`)
+
+        Object.entries(groupWisePlayers).forEach(([group, playersSet]) => {
+            lines.push(`\n📌 ${group}`)
+
+            const list = Array.from(playersSet)
+            list.forEach((p, index) => {
+                lines.push(`${index + 1}) ${p}`)
+            })
+        })
+
+        await navigator.clipboard.writeText(lines.join("\n"))
+
+        setCopiedPlayersMsg(true)
+        setTimeout(() => setCopiedPlayersMsg(false), 1500)
     }
 
     return (
@@ -125,6 +166,7 @@ Status: ${String(tournament?.status).toUpperCase()}
                     sx={{
                         display: "flex",
                         justifyContent: "space-between",
+                        alignItems: "center",
                         gap: 2,
                         flexWrap: "wrap",
                         mb: 2,
@@ -133,12 +175,35 @@ Status: ${String(tournament?.status).toUpperCase()}
                     <Typography variant="h6" sx={{ fontWeight: 800 }}>
                         Group Wise Matches
                     </Typography>
+
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        {copiedPlayersMsg && (
+                            <Typography sx={{ color: "#00e5ff", fontWeight: 700, fontSize: 13 }}>
+                                Copied ✅
+                            </Typography>
+                        )}
+
+                        <Button
+                            onClick={copyGroupWisePlayers}
+                            variant="outlined"
+                            size="small"
+                            sx={{
+                                color: "#00e5ff",
+                                borderColor: "#00e5ff",
+                                fontWeight: 800,
+                                "&:hover": {
+                                    borderColor: "#00e5ff",
+                                    backgroundColor: "rgba(0,229,255,0.08)",
+                                },
+                            }}
+                        >
+                            Copy Group Players
+                        </Button>
+                    </Box>
                 </Box>
 
                 {/* No matches */}
-                {Object.keys(groupedMatches).length === 0 && (
-                    <Typography>No matches available</Typography>
-                )}
+                {Object.keys(groupedMatches).length === 0 && <Typography>No matches available</Typography>}
 
                 {/* Groups */}
                 {Object.entries(groupedMatches).map(([group, mList]) => (
@@ -165,13 +230,11 @@ Status: ${String(tournament?.status).toUpperCase()}
                                                 p: 1.2,
                                                 borderRadius: 2,
                                                 backgroundColor: "rgba(0,229,255,0.06)",
-
-                                                // ✅ Responsive layout
                                                 flexDirection: { xs: "column", sm: "row" },
                                                 alignItems: { xs: "stretch", sm: "center" },
                                             }}
                                         >
-                                            {/* ✅ Left match info */}
+                                            {/* Match info */}
                                             <Box sx={{ width: { xs: "100%", sm: 360 } }}>
                                                 <Typography
                                                     sx={{
@@ -191,7 +254,7 @@ Status: ${String(tournament?.status).toUpperCase()}
                                                 </Typography>
                                             </Box>
 
-                                            {/* ✅ Score inputs */}
+                                            {/* Score inputs */}
                                             <Box
                                                 sx={{
                                                     width: { xs: "100%", sm: 320 },
@@ -222,7 +285,7 @@ Status: ${String(tournament?.status).toUpperCase()}
                                                 />
                                             </Box>
 
-                                            {/* ✅ Copied text + Copy Button */}
+                                            {/* Copied text + Copy Button */}
                                             <Box
                                                 sx={{
                                                     width: { xs: "100%", sm: "auto" },
@@ -233,13 +296,7 @@ Status: ${String(tournament?.status).toUpperCase()}
                                                 }}
                                             >
                                                 {copiedMatchId === match.id && (
-                                                    <Typography
-                                                        sx={{
-                                                            color: "#00e5ff",
-                                                            fontWeight: 700,
-                                                            fontSize: 13,
-                                                        }}
-                                                    >
+                                                    <Typography sx={{ color: "#00e5ff", fontWeight: 700, fontSize: 13 }}>
                                                         Copied ✅
                                                     </Typography>
                                                 )}
