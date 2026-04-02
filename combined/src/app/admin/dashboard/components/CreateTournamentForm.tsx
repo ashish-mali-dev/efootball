@@ -79,7 +79,7 @@ export function CreateTournamentForm({ onTournamentCreated }: CreateTournamentFo
                   type="number"
                   value={forms.teamsPerGroup}
                   onChange={e => forms.setTeamsPerGroup(Number(e.target.value))}
-                  inputProps={{ min: 3, max: 8 }}
+                  inputProps={{ min: 3, max: 20 }}
                   sx={{ mb: 1 }}
                   size="small"
                 />

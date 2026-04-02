@@ -47,8 +47,8 @@ export function useTournaments() {
 
     // Validate group + knockout settings
     if (formData.type === 'group_and_knockout') {
-      if (formData.teamsPerGroup < 3 || formData.teamsPerGroup > 8) {
-        throw new Error('Teams per group must be between 3 and 8')
+      if (formData.teamsPerGroup < 3) {
+        throw new Error('Teams per group must be at least 3')
       }
       if (formData.teamsAdvancing < 1 || formData.teamsAdvancing >= formData.teamsPerGroup) {
         throw new Error('Teams advancing must be less than teams per group')

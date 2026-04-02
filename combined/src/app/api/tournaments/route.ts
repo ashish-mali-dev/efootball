@@ -81,9 +81,9 @@ export async function POST(request: NextRequest) {
 
     // Validate group settings for group_and_knockout tournaments
     if (type === 'group_and_knockout') {
-      if (teamsPerGroup < 3 || teamsPerGroup > 8) {
+      if (teamsPerGroup < 3 || teamsPerGroup > 20) {
         return NextResponse.json(
-          { error: 'Teams per group must be between 3 and 8' },
+          { error: 'Teams per group must be between 3 and 20' },
           { status: 400 }
         )
       }
