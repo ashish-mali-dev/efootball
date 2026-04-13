@@ -468,61 +468,61 @@ export class DatabaseService {
   static getKnockoutQualifiers(groupStandings: GroupStanding[], tournament: Tournament): PlayerStats[] {
     const teamsAdvancing = tournament.teams_advancing_per_group || 2
     const allowThirdPlace = tournament.allow_third_place_teams !== false // Default to true
-    
-    const groupWinners: PlayerStats[] = []
-    const runnersUp: PlayerStats[] = []
-    const thirdPlaceTeams: PlayerStats[] = []
+
+    const automaticQualifiersByPosition = new Map<number, PlayerStats[]>()
+    const remainingTeams: PlayerStats[] = []
 
     // Process each group and assign positions based on computed standings
     for (const group of groupStandings) {
       //Already sorted players
       const sortedPlayers = group.players
-      
-      // Extract qualified teams from each group
-      if (sortedPlayers.length >= 1 && teamsAdvancing >= 1) {
-        const winner = { ...sortedPlayers[0], groupPosition: 1, group: group.groupLetter, qualifiedForKnockout: true }
-        groupWinners.push(winner)
-      }
-      
-      if (sortedPlayers.length >= 2 && teamsAdvancing >= 2) {
-        const runnerUp = { ...sortedPlayers[1], groupPosition: 2, group: group.groupLetter, qualifiedForKnockout: true }
-        runnersUp.push(runnerUp)
-      }
-      
-      if (sortedPlayers.length >= 3) {
-        const thirdPlace = { ...sortedPlayers[2], groupPosition: 3, group: group.groupLetter }
-        thirdPlaceTeams.push(thirdPlace)
+
+      for (let index = 0; index < sortedPlayers.length; index++) {
+        const position = index + 1
+        const team = {
+          ...sortedPlayers[index],
+          groupPosition: position,
+          group: group.groupLetter,
+          qualifiedForKnockout: position <= teamsAdvancing,
+        }
+
+        if (position <= teamsAdvancing) {
+          const teamsAtPosition = automaticQualifiersByPosition.get(position) || []
+          teamsAtPosition.push(team)
+          automaticQualifiersByPosition.set(position, teamsAtPosition)
+        } else {
+          remainingTeams.push(team)
+        }
       }
     }
 
-    // Calculate qualified teams so far
-    const automaticQualifiers = groupWinners.length + runnersUp.length
+    const automaticQualifiers = Array.from(automaticQualifiersByPosition.values()).flat()
+    const automaticQualifierCount = automaticQualifiers.length
     
     // Determine ideal knockout bracket size
-    const targetBracketSize = this.calculateIdealBracketSize(automaticQualifiers, thirdPlaceTeams.length)
+    const targetBracketSize = this.calculateIdealBracketSize(automaticQualifierCount, remainingTeams.length)
     
-    // Add best third-place teams if needed and allowed
-    const qualifiedTeams = [...groupWinners, ...runnersUp]
+    // Add best remaining teams if needed and allowed
+    const qualifiedTeams = [...automaticQualifiers]
     
-    if (allowThirdPlace && automaticQualifiers < targetBracketSize) {
-      const thirdPlaceNeeded = targetBracketSize - automaticQualifiers
-      
-      // Sort third place teams by performance and select best ones
-      thirdPlaceTeams.sort(
+    if (allowThirdPlace && automaticQualifierCount < targetBracketSize) {
+      const additionalTeamsNeeded = targetBracketSize - automaticQualifierCount
+
+      remainingTeams.sort(
         (a, b) => b.points - a.points || b.goalDiff - a.goalDiff || b.goalsFor - a.goalsFor
       )
-      
-      const bestThirdPlace = thirdPlaceTeams.slice(0, thirdPlaceNeeded)
-      bestThirdPlace.forEach(team => {
+
+      const bestAdditionalTeams = remainingTeams.slice(0, additionalTeamsNeeded)
+      bestAdditionalTeams.forEach(team => {
         team.qualifiedForKnockout = true
       })
-      
-      qualifiedTeams.push(...bestThirdPlace)
+
+      qualifiedTeams.push(...bestAdditionalTeams)
     }
 
     console.log(`\nFinal qualified teams (${qualifiedTeams.length}):`)
     qualifiedTeams.forEach(team => {
-      const pos = team.groupPosition === 1 ? '1st' : team.groupPosition === 2 ? '2nd' : '3rd'
+      const pos = this.formatOrdinal(team.groupPosition || 0)
       console.log(`${team.name} - Group ${team.group} ${pos} (${team.points}pts, GD:${team.goalDiff})`)
     })
 
@@ -531,27 +531,33 @@ export class DatabaseService {
 
   static calculateIdealBracketSize(automaticQualifiers: number, availableThirdPlace: number): number {
     const totalAvailable = automaticQualifiers + availableThirdPlace
-    
-    // Find the largest power of 2 that fits within available teams
-    // and is at least as large as automatic qualifiers
-    const minSize = Math.max(4, automaticQualifiers) // Minimum 4 teams for knockout
-    const maxSize = totalAvailable
-    
+
+    if (totalAvailable < 2) {
+      return totalAvailable
+    }
+
+    const minimumBracketSize = automaticQualifiers >= 4 ? automaticQualifiers : 4
     let targetSize = 4
-    while (targetSize * 2 <= maxSize && targetSize < 32) {
+
+    while (targetSize < minimumBracketSize && targetSize < 32) {
       targetSize *= 2
     }
-    
-    // If we can't fit the automatic qualifiers, return the next power of 2
-    if (targetSize < automaticQualifiers) {
-      targetSize = Math.pow(2, Math.ceil(Math.log2(automaticQualifiers)))
+
+    if (targetSize > totalAvailable) {
+      throw new Error(
+        `Cannot create a valid knockout bracket with ${automaticQualifiers} automatic qualifiers and ${availableThirdPlace} additional teams. Use a knockout size of 4, 8, 16, or 32 teams.`
+      )
     }
-    
-    return Math.min(targetSize, maxSize)
+
+    return targetSize
   }
 
   static async createKnockoutMatches(tournamentId: number, qualifiedTeams: PlayerStats[], tournament: Tournament) {
     const teamCount = qualifiedTeams.length
+
+    if (!this.isSupportedKnockoutSize(teamCount)) {
+      throw new Error(`Unsupported knockout bracket size: ${teamCount}. Expected 2, 4, 8, 16, or 32 teams.`)
+    }
     
     console.log(`Creating knockout bracket for ${teamCount} teams`)
     
@@ -579,20 +585,28 @@ export class DatabaseService {
   }
 
   static createFIFAStyleSeeding(teams: PlayerStats[]): PlayerStats[] {
-    // Separate teams by group position
-    const groupWinners = teams.filter(t => t.groupPosition === 1)
-    const runnersUp = teams.filter(t => t.groupPosition === 2)  
-    const thirdPlace = teams.filter(t => t.groupPosition === 3)
-    
-    // Sort each category by performance (points, goal diff, goals for)
-    const sortedWinners = [...groupWinners].sort((a, b) => b.points - a.points || b.goalDiff - a.goalDiff || b.goalsFor - a.goalsFor)
-    const sortedRunners = [...runnersUp].sort((a, b) => b.points - a.points || b.goalDiff - a.goalDiff || b.goalsFor - a.goalsFor)
-    const sortedThird = [...thirdPlace].sort((a, b) => b.points - a.points || b.goalDiff - a.goalDiff || b.goalsFor - a.goalsFor)
-    
-    // FIFA seeding: Group winners get best seeds, then runners-up, then third-place
-    const seeded = [...sortedWinners, ...sortedRunners, ...sortedThird]
-    
-    console.log(`Seeding complete: ${sortedWinners.length} winners, ${sortedRunners.length} runners-up, ${sortedThird.length} third-place`)
+    const teamsByPosition = new Map<number, PlayerStats[]>()
+
+    for (const team of teams) {
+      const position = team.groupPosition || Number.MAX_SAFE_INTEGER
+      const teamsAtPosition = teamsByPosition.get(position) || []
+      teamsAtPosition.push(team)
+      teamsByPosition.set(position, teamsAtPosition)
+    }
+
+    const sortedPositions = Array.from(teamsByPosition.keys()).sort((a, b) => a - b)
+    const seeded = sortedPositions.flatMap(position => {
+      const teamsAtPosition = teamsByPosition.get(position) || []
+      return [...teamsAtPosition].sort(
+        (a, b) => b.points - a.points || b.goalDiff - a.goalDiff || b.goalsFor - a.goalsFor
+      )
+    })
+
+    console.log(
+      `Seeding complete: ${sortedPositions
+        .map(position => `${teamsByPosition.get(position)?.length || 0} x ${this.formatOrdinal(position)}`)
+        .join(', ')}`
+    )
     
     return seeded
   }
@@ -706,6 +720,20 @@ export class DatabaseService {
     if (teamCount <= 8) return 'quarter'
     if (teamCount <= 16) return 'round-of-16'
     return 'round-of-32'
+  }
+
+  static isSupportedKnockoutSize(teamCount: number): boolean {
+    return teamCount === 2 || teamCount === 4 || teamCount === 8 || teamCount === 16 || teamCount === 32
+  }
+
+  static formatOrdinal(value: number): string {
+    const remainderTen = value % 10
+    const remainderHundred = value % 100
+
+    if (remainderTen === 1 && remainderHundred !== 11) return `${value}st`
+    if (remainderTen === 2 && remainderHundred !== 12) return `${value}nd`
+    if (remainderTen === 3 && remainderHundred !== 13) return `${value}rd`
+    return `${value}th`
   }
   
   static async generateLegacyKnockoutMatches(tournamentId: number) {
