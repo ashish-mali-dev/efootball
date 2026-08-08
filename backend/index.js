@@ -7,6 +7,7 @@ app.use(cors());
 app.use(express.json());
 
 const dotenv = require('dotenv');
+dotenv.config({ path: require('path').resolve(__dirname, '../.env.local') });
 dotenv.config();
 
 const db = require('./data');
