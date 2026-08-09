@@ -1,11 +1,7 @@
 'use client'
 
 import React from 'react'
-<<<<<<< HEAD
-import { Typography, Box, Paper, Chip, Stack, Alert, Divider } from '@mui/material'
-=======
-import { Typography, Box, Paper, Stack, Chip } from '@mui/material'
->>>>>>> 585a2dc (Integrate AdSense support)
+import { Typography, Box, Paper, Chip, Stack, Alert } from '@mui/material'
 import { useTournaments } from './hooks/useTournaments'
 import { TournamentCard } from './components/TournamentCard'
 import AdSenseAd from '@/components/AdSenseAd'
@@ -26,30 +22,8 @@ export default function Home() {
         <Typography variant="h3" className={styles.mainTitle}>
           ⚽ eFootball Gadhinglaj
         </Typography>
-<<<<<<< HEAD
         <Typography variant="h6" sx={{ color: '#bfe9ff', maxWidth: 800, mx: 'auto', mb: 2 }}>
           Track local eFootball tournaments, follow match results, and explore standings in one easy-to-read hub for the Gadhinglaj community.
-=======
-        <Typography variant="h6" sx={{ mt: 1, color: 'rgba(255, 255, 255, 0.7)' }}>
-          Organize and track competitive eFootball tournaments
-        </Typography>
-      </Box>
-
-      <Paper sx={{ p: 3, mb: 3, backgroundColor: 'rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(10px)' }}>
-        <Typography variant="body1" sx={{ mb: 2, lineHeight: 1.7 }}>
-          Welcome to eFootball Gadhinglaj, your complete tournament management platform. 
-          Create tournaments, manage players, generate brackets, and track live match results 
-          all in one place. Whether you're organizing a casual gaming event or a competitive tournament, 
-          we've got you covered.
-        </Typography>
-      </Paper>
-
-      <AdSenseAd adSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOME} />
-      
-      {loadError && (
-        <Typography color="error" sx={{ mb: 2 }}>
-          {loadError}
->>>>>>> 585a2dc (Integrate AdSense support)
         </Typography>
       </Box>
 
@@ -63,21 +37,12 @@ export default function Home() {
 
       <Box className="tournaments-list">
         {tournaments.length === 0 && !loadError && (
-<<<<<<< HEAD
           <Paper sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(0,229,255,0.25)' }}>
             <Typography variant="h6" gutterBottom>
               No tournament data is available yet
             </Typography>
             <Typography sx={{ color: '#cfe8f7' }}>
               This page will show upcoming and completed tournaments here once the tournament data is loaded.
-=======
-          <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="h6" gutterBottom>
-              No tournaments yet
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              Create your first tournament to get started
->>>>>>> 585a2dc (Integrate AdSense support)
             </Typography>
           </Paper>
         )}
@@ -93,8 +58,7 @@ export default function Home() {
         ))}
       </Box>
 
-<<<<<<< HEAD
-      <AdSenseAd adSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOME} adFormat="horizontal" />
+      <AdSenseAd adSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOME} />
 
       <Paper sx={{ p: { xs: 2, md: 3 }, mt: 3, bgcolor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(0,229,255,0.16)' }}>
         <Typography variant="h5" gutterBottom>
@@ -109,40 +73,6 @@ export default function Home() {
         <Typography sx={{ mt: 2, color: '#dcecf7' }}>
           This platform is designed to help players, organizers, and fans follow tournament progress with clear summaries, match lists, and final results.
         </Typography>
-=======
-      <AdSenseAd adSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOME} />
-
-      <Paper sx={{ p: 3, mt: 4, backgroundColor: 'rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(10px)' }}>
-        <Typography variant="h6" gutterBottom>
-          ✨ What This Site Offers
-        </Typography>
-        <Stack direction="row" spacing={2} flexWrap="wrap" sx={{ mt: 2 }}>
-          <Chip 
-            label="Tournament Management"
-            variant="outlined"
-            color="primary"
-            sx={{ mb: 1 }}
-          />
-          <Chip 
-            label="Player Tracking"
-            variant="outlined"
-            color="primary"
-            sx={{ mb: 1 }}
-          />
-          <Chip 
-            label="Live Match Updates"
-            variant="outlined"
-            color="primary"
-            sx={{ mb: 1 }}
-          />
-          <Chip 
-            label="Bracket Generation"
-            variant="outlined"
-            color="primary"
-            sx={{ mb: 1 }}
-          />
-        </Stack>
->>>>>>> 585a2dc (Integrate AdSense support)
       </Paper>
     </div>
   )
