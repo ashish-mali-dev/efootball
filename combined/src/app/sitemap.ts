@@ -11,7 +11,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     {
       url: 'https://efootball-gad.vercel.app/details',
       lastModified: new Date(),
+<<<<<<< HEAD
       changeFrequency: 'weekly',
+=======
+      changeFrequency: 'daily',
+>>>>>>> 585a2dc (Integrate AdSense support)
       priority: 0.8,
     },
     {

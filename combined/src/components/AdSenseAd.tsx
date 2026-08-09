@@ -1,5 +1,6 @@
 'use client'
 
+<<<<<<< HEAD
 import { useEffect, useMemo } from 'react'
 import { Box } from '@mui/material'
 
@@ -40,6 +41,41 @@ export default function AdSenseAd({
         data-ad-slot={adSlot}
         data-ad-format={adFormat}
         data-ad-layout={adLayout}
+=======
+import { useEffect } from 'react'
+import { Box } from '@mui/material'
+
+interface AdSenseAdProps {
+  adSlot?: string
+  style?: React.CSSProperties
+}
+
+export default function AdSenseAd({ adSlot, style }: AdSenseAdProps) {
+  useEffect(() => {
+    if (adSlot && typeof window !== 'undefined') {
+      try {
+        (window.adsbygoogle = window.adsbygoogle || []).push({})
+      } catch (err) {
+        console.log('AdSense error:', err)
+      }
+    }
+  }, [adSlot])
+
+  // Don't render if no slot provided (waiting for real slot from Google)
+  if (!adSlot) {
+    return null
+  }
+
+  return (
+    <Box sx={{ my: 2, ...style }}>
+      <ins
+        className="adsbygoogle"
+        style={{ display: 'block', ...style }}
+        data-ad-client={process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID}
+        data-ad-slot={adSlot}
+        data-ad-format="auto"
+        data-full-width-responsive="true"
+>>>>>>> 585a2dc (Integrate AdSense support)
       />
     </Box>
   )

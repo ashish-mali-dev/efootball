@@ -10,27 +10,13 @@ const apiClient = axios.create({
   },
 })
 
-// Add request interceptor for debugging
-apiClient.interceptors.request.use(
-  (config) => {
-    console.log(`Making ${config.method?.toUpperCase()} request to: ${config.baseURL}${config.url}`)
-    return config
-  },
-  (error) => {
-    console.error('Request error:', error)
-    return Promise.reject(error)
-  }
-)
-
-// Add response interceptor for error handling
+// Response interceptor — only log unexpected errors (not 404s which are handled at call sites)
 apiClient.interceptors.response.use(
-  (response) => {
-    return response
-  },
+  (response) => response,
   (error) => {
-    console.error('API Error:', error.response?.data || error.message)
-    if (error.response?.status === 404) {
-      console.error('API endpoint not found:', error.config?.url)
+    const status = error.response?.status
+    if (status !== 404) {
+      console.error('API Error:', error.response?.data || error.message)
     }
     return Promise.reject(error)
   }
