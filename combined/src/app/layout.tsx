@@ -9,23 +9,14 @@ import './globals.css'
 const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || 'ca-pub-7117852267245022'
 
 export const metadata: Metadata = {
-<<<<<<< HEAD
   title: 'eFootball Gadhinglaj Tournament Tracker',
   description: 'Follow eFootball tournaments, match results, standings, and event updates for the Gadhinglaj community.',
   keywords: ['efootball', 'tournament', 'football', 'matches', 'standings', 'gadhinglaj'],
   openGraph: {
     title: 'eFootball Gadhinglaj Tournament Tracker',
     description: 'Follow eFootball tournaments, match results, standings, and event updates for the Gadhinglaj community.',
-=======
-  title: 'eFootball Gadhinglaj - Tournament Manager',
-  description: 'Organize and track eFootball tournaments in Gadhinglaj. Tournament management system for competitive gaming.',
-  keywords: 'eFootball, tournament, Gadhinglaj, gaming, matches, brackets',
-  openGraph: {
-    title: 'eFootball Gadhinglaj - Tournament Manager',
-    description: 'Organize and track eFootball tournaments in Gadhinglaj',
     url: 'https://efootball-gad.vercel.app',
     siteName: 'eFootball Gadhinglaj',
->>>>>>> 585a2dc (Integrate AdSense support)
     type: 'website',
   },
 }
@@ -63,13 +54,8 @@ export default function RootLayout({
               </Box>
               <Button color="inherit" component={Link} href="/" className={styles.navButton}>Home</Button>
               <Button color="inherit" component={Link} href="/details" className={styles.navButton}>Get Match Details</Button>
-<<<<<<< HEAD
-              <Button color="inherit" component={Link} href="/privacy-policy">Privacy Policy</Button>
-              <Button color="inherit" component={Link} href="/contact">Contact</Button>
-=======
-              <Button color="inherit" component={Link} href="/privacy-policy" className={styles.navButton}>Privacy</Button>
+              <Button color="inherit" component={Link} href="/privacy-policy" className={styles.navButton}>Privacy Policy</Button>
               <Button color="inherit" component={Link} href="/contact" className={styles.navButton}>Contact</Button>
->>>>>>> 585a2dc (Integrate AdSense support)
               <Button color="inherit" component={Link} href="/admin">Admin</Button>
             </Toolbar>
           </AppBar>
