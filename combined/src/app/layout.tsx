@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { AppBar, Toolbar, Typography, Button, Container, Box } from '@mui/material'
+import { AppBar, Toolbar, Button, Container, Box } from '@mui/material'
 import Link from 'next/link'
 import Image from 'next/image'
 import ThemeClientProvider from '@/components/ThemeProvider'
