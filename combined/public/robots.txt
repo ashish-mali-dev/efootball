@@ -1,9 +1,6 @@
 User-agent: *
 Allow: /
-<<<<<<< HEAD
-=======
 Disallow: /admin
 Disallow: /api
->>>>>>> 585a2dc (Integrate AdSense support)
 
 Sitemap: https://efootball-gad.vercel.app/sitemap.xml
