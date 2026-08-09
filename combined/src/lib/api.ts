@@ -10,12 +10,12 @@ const apiClient = axios.create({
   },
 })
 
-// Response interceptor — only log unexpected errors (not 404s which are handled at call sites)
+// Response interceptor — suppress 404 noise only in production
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status
-    if (status !== 404) {
+    if (status !== 404 || process.env.NODE_ENV !== 'production') {
       console.error('API Error:', error.response?.data || error.message)
     }
     return Promise.reject(error)
