@@ -1,10 +1,23 @@
 import { createClient } from '@libsql/client'
 
 // Turso database configuration
-const client = createClient({
-  url: process.env.TURSO_DB_URL || '',
-  authToken: process.env.TURSO_DB_TOKEN || '',
-})
+const tursoUrl = process.env.TURSO_DB_URL?.trim()
+const tursoToken = process.env.TURSO_DB_TOKEN?.trim()
+
+const client = tursoUrl
+  ? createClient({
+      url: tursoUrl,
+      authToken: tursoToken || '',
+    })
+  : null
+
+function assertDatabaseConfigured() {
+  if (!client) {
+    throw new Error('Database is not configured. Set TURSO_DB_URL and TURSO_DB_TOKEN.')
+  }
+
+  return client
+}
 
 // Type definitions for database entities
 export interface Player {
@@ -75,7 +88,8 @@ export interface TournamentConfig {
 export class DatabaseService {
   static async executeQuery<T = any>(sql: string, params: any[] = []): Promise<T[]> {
     try {
-      const result = await client.execute({ sql, args: params })
+      const db = assertDatabaseConfigured()
+      const result = await db.execute({ sql, args: params })
       return result.rows as T[]
     } catch (error) {
       console.error('Database query error:', error)
@@ -85,7 +99,8 @@ export class DatabaseService {
 
   static async executeUpdate(sql: string, params: any[] = []): Promise<{ insertId?: number; changes: number }> {
     try {
-      const result = await client.execute({ sql, args: params })
+      const db = assertDatabaseConfigured()
+      const result = await db.execute({ sql, args: params })
       return {
         insertId: result.lastInsertRowid ? Number(result.lastInsertRowid) : undefined,
         changes: result.rowsAffected || 0
