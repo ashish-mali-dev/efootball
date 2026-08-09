@@ -59,7 +59,7 @@ export default function Home() {
         </Alert>
       )}
 
-      <AdSenseAd adSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOME} adFormat="horizontal" />
+      <AdSenseAd adSlot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOME} />
 
       <Box className="tournaments-list">
         {tournaments.length === 0 && !loadError && (
