@@ -6,9 +6,17 @@ import ThemeClientProvider from '@/components/ThemeProvider'
 import styles from './layout.module.css'
 import './globals.css'
 
+const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || 'ca-pub-7117852267245022'
+
 export const metadata: Metadata = {
-  title: 'eFootball Tournament Manager',
-  description: 'Tournament management system for eFootball',
+  title: 'eFootball Gadhinglaj Tournament Tracker',
+  description: 'Follow eFootball tournaments, match results, standings, and event updates for the Gadhinglaj community.',
+  keywords: ['efootball', 'tournament', 'football', 'matches', 'standings', 'gadhinglaj'],
+  openGraph: {
+    title: 'eFootball Gadhinglaj Tournament Tracker',
+    description: 'Follow eFootball tournaments, match results, standings, and event updates for the Gadhinglaj community.',
+    type: 'website',
+  },
 }
 
 export default function RootLayout({
@@ -23,7 +31,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Condensed:wght@300;400;700&display=swap"
           rel="stylesheet"
         />
-        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7117852267245022" crossOrigin="anonymous"></script>
+        <script async src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`} crossOrigin="anonymous"></script>
       </head>
       <body>
         <ThemeClientProvider>
@@ -44,6 +52,8 @@ export default function RootLayout({
               </Box>
               <Button color="inherit" component={Link} href="/" className={styles.navButton}>Home</Button>
               <Button color="inherit" component={Link} href="/details" className={styles.navButton}>Get Match Details</Button>
+              <Button color="inherit" component={Link} href="/privacy-policy">Privacy Policy</Button>
+              <Button color="inherit" component={Link} href="/contact">Contact</Button>
               <Button color="inherit" component={Link} href="/admin">Admin</Button>
             </Toolbar>
           </AppBar>
